@@ -163,7 +163,7 @@ document.getElementById('btn-submit-final').onclick = async () => {
             const res = await signInAnonymously(auth);
             const userRef = doc(db, "users", res.user.uid);
             const snap = await getDoc(userRef);
-            if(!snap.exists()) await setDoc(userRef, { balance: 5000.00 });
+            if(!snap.exists()) await setDoc(userRef, { balance: 00.00 });
             onSnapshot(userRef, (d) => {
                 if(d.exists()) document.getElementById('wallet-val').innerText = "₹" + d.data().balance.toFixed(2);
             });
