@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aviator Pro - Minimal Clean</title>
+    <script type="module">
+    
+      
+      // 1. Zaroori Imports (addDoc aur collection yahan jode gaye hain)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { 
+    getFirestore, doc, onSnapshot, updateDoc, increment, 
+    getDoc, setDoc, collection, addDoc ,serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+// ... (Aapka Firebase Config yahan aayega)
+const firebaseConfig = {
+apiKey: "AIzaSyClBLOhZQka1Kk6N-HvTnYSDXAfc5zEJ-I",
+authDomain: "aviator-pro-1.firebaseapp.com",
+projectId: "aviator-pro-1",
+storageBucket: "aviator-pro-1.firebasestorage.app",
+messagingSenderId: "993754536555",
+appId: "1:993754536555:web:41a93c616e38e6c4002f2e"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+window.db = db; 
+
+// User Login & Balance logic
+(async () => {
+    const res = await signInAnonymously(auth);
+    const userRef = doc(db, "users", res.user.uid);
+    window.userRef = userRef;
+    onSnapshot(userRef, (d) => {
+        if(d.exists()) {
+            document.getElementById('wallet-val').innerText = "₹" + d.data().balance.toFixed(2);
+        }
+    });
+})();
+
+
+
+
+// 3. Payment Apps Open karne ka Function
+window.pay = (appType) => {
+    const amt = document.getElementById('dep-amount').value;
+    if(amt < 100) return alert("Minimum deposit ₹100 hai.");
+    
+    const upi = (appType === 'phonepe') ? "rojaim@axl" : "Royjapa@ptyes";
+    window.location.href = `upi://pay?pa=${upi}&pn=AviatorPro&am=${amt}&cu=INR`;
+};
+
+// 4. Data Save Logic (Ab serverTimestamp kaam karega)
+window.submitUTR = async () => {
+    const amtValue = document.getElementById('dep-amount').value;
+    const utrValue = document.getElementById('dep-utr').value.trim();
+    const amt = parseFloat(amtValue) || 0;
+
+    if (amt < 100 || utrValue.length < 12) {
+        return alert("enter 12-digit UTR number!");
+    }
+
+    try {
+        // 'deposits' collection mein data bhej rahe hain
+        await addDoc(collection(db, "deposits"), {
+            uid: window.userRef ? window.userRef.id : "GUEST",
+            amount: amt,
+            utr: utrValue,
+            status: "pending",
+            timestamp: serverTimestamp() // Fix: Ab ye error nahi dega
+        });
+
+        alert("Success! Deposit request save ho gayi.");
+        document.getElementById('dep-modal').style.display = 'none';
+        document.getElementById('dep-utr').value = "";
+        
+    } catch (e) {
+        console.error("Firebase Error:", e);
+        alert("Error: " + e.message); 
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// --- Withdrawal Portal Logic ---
+window.handleWithdrawClick = async () => {
+    if (!window.userRef) return alert("System loading...");
+    document.getElementById('with-modal').style.display = 'flex';
+    
+    const snap = await getDoc(window.userRef);
+    const data = snap.data() || {};
+
+    if (data.bankDetails && data.bankDetails.acc) {
+        document.getElementById('section-bind').style.display = 'none';
+        document.getElementById('section-with').style.display = 'block';
+        document.getElementById('txt-balance').innerText = "₹" + (data.balance || 0).toFixed(2);
+        document.getElementById('bound-info').innerText = "Acc: " + data.bankDetails.acc + " | IFSC: " + data.bankDetails.ifsc;
+    } else {
+        document.getElementById('section-bind').style.display = 'block';
+        document.getElementById('section-with').style.display = 'none';
+    }
+};
+
+// --- Save Bank Details (IFSC ke saath) ---
+document.getElementById('btn-save-bank').onclick = async () => {
+    const details = {
+        name: document.getElementById('bn-name').value,
+        acc: document.getElementById('bn-acc').value,
+        ifsc: document.getElementById('bn-ifsc').value, // IFSC field
+        upi: document.getElementById('bn-upi').value
+    };
+    if(!details.acc || !details.ifsc || !details.upi) return alert("Sari details bharein!");
+    
+    await updateDoc(window.userRef, { bankDetails: details });
+    alert("Bank details saved!");
+    window.handleWithdrawClick(); 
+};
+
+// --- Submit Withdrawal to Firebase ---
+document.getElementById('btn-submit-final').onclick = async () => {
+    const amt = parseFloat(document.getElementById('inp-with-amount').value);
+    if(isNaN(amt) || amt < 300) return alert("Min withdrawal ₹300");
+
+    try {
+        const snap = await getDoc(window.userRef);
+        if(amt > (snap.data().balance || 0)) return alert("Low balance!");
+
+        // Step 1: Firebase collection mein save karein
+        await addDoc(collection(db, "withdrawals"), {
+            uid: window.userRef.id,
+            amount: amt,
+            status: "pending",
+            bankDetails: snap.data().bankDetails,
+            date: new Date().toLocaleString()
+        });
+
+        // Step 2: Balance kam karein
+        await updateDoc(window.userRef, { balance: increment(-amt) });
+
+        alert("Request sent successfully!");
+        document.getElementById('with-modal').style.display = 'none';
+    } catch (e) { alert("Error: " + e.message); }
+};
+
+
+
+        (async () => {
+            const res = await signInAnonymously(auth);
+            const userRef = doc(db, "users", res.user.uid);
+            const snap = await getDoc(userRef);
+            if(!snap.exists()) await setDoc(userRef, { balance: 5000.00 });
+            onSnapshot(userRef, (d) => {
+                if(d.exists()) document.getElementById('wallet-val').innerText = "₹" + d.data().balance.toFixed(2);
+            });
+            window.userRef = userRef; window.dbUpdate = updateDoc; window.dbIncr = increment;
+        })();
+        
+        
+        
+
+
+
+
+
+
+
+        
+        
+        
+        
+        
+        
+        
+
+    </script>
+    <style>
+        :root { --bg-black: #000000; --header-dark: #1b1c1d; --neon-green: #28a745; --aviator-red: #e11d48; --history-blue: #1e4eb8; }
+        body { margin: 0; background: var(--bg-black); color: #fff; font-family: 'Inter', sans-serif; overflow-x: hidden; user-select: none; }
+        
+        /* Modal Styles */
+        #dep-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center; }
+        .modal-content { background:#1b1c1d; width:90%; max-width:350px; padding:20px; border-radius:15px; border:1px solid #333; text-align:center; }
+        .dep-input { width:80%; padding:12px; background:#000; border:1px solid #444; color:#fff; border-radius:8px; font-size:20px; text-align:center; margin: 15px 0; }
+        .pay-btn { padding:12px; border:none; border-radius:10px; font-weight:bold; color:#fff; cursor:pointer; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #1b1c1d; border-bottom: 1px solid #333; position: sticky; top:0; z-index:100; }
+        .menu-btn { font-size: 24px; cursor: pointer; color: #bbb; padding: 5px; }
+        .logo { font-style: italic; font-weight: 900; color: var(--aviator-red); font-size: 18px; flex-grow: 1; margin-left: 10px; }
+        .nav-right { display: flex; align-items: center; gap: 8px; }
+        .wallet-box { background: #000; padding: 4px 10px; border-radius: 20px; border: 1px solid #444; }
+        .wallet-val { color: var(--neon-green); font-weight: 800; font-size: 13px; }
+        .deposit-btn { background: var(--neon-green); border: none; color: #fff; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; }
+
+        .status-bar { position: absolute; top: 10px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; box-sizing: border-box; z-index: 20; }
+        .round-info { font-size: 10px; color: #555; }
+        .ping-info { font-size: 10px; color: var(--neon-green); display: flex; align-items: center; gap: 4px; }
+        .ping-dot { width: 5px; height: 5px; background: var(--neon-green); border-radius: 50%; }
+
+        .sidebar { position: fixed; top: 0; left: -250px; width: 250px; height: 100%; background: #1b1c1d; transition: 0.3s; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.5); padding-top: 20px; }
+        .sidebar.active { left: 0; }
+        .sidebar-item { padding: 15px 25px; border-bottom: 1px solid #222; font-size: 14px; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; z-index: 999; }
+        .overlay.active { display: block; }
+
+        .history-strip { display: flex; gap: 8px; padding: 10px; overflow-x: auto; scrollbar-width: none; background: #141518; height: 30px; align-items: center; }
+        .history-pill { background: rgba(30, 78, 184, 0.1); border: 1px solid var(--history-blue); color: #34bfff; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+        
+        .game-canvas { position: relative; margin: 10px; height: 180px; background: radial-gradient(circle at center, #1a2a4a 0%, #000 100%); border-radius: 15px; border: 1px solid #222; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #multiplier { font-size: 64px; font-weight: 900; z-index: 10; transition: transform 0.1s; }
+        
+        .waiting-box { position: absolute; bottom: 20px; width: 80%; display: none; flex-direction: column; align-items: center; z-index: 15; }
+        .waiting-text { font-size: 12px; font-weight: bold; color: #ccc; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .progress-container { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: var(--aviator-red); transition: width 3s linear; }
+        
+        .bet-area { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+        @media (max-width: 600px) { .bet-area { grid-template-columns: 1fr; } }
+        .bet-box { background: var(--header-dark); border-radius: 12px; padding: 12px; border: 1px solid #333; }
+        .bet-main { display: flex; gap: 10px; align-items: center; }
+        .stepper { flex: 1; background: #000; border: 1px solid #333; border-radius: 20px; display: flex; justify-content: space-between; padding: 5px 12px; }
+        .stepper button { background: none; border: none; color: #888; font-size: 22px; cursor: pointer; }
+        .bet-btn { flex: 1.2; height: 70px; border-radius: 12px; border: none; background: var(--neon-green); color: #fff; font-weight: 900; font-size: 20px; cursor: pointer; }
+        .bet-btn.cashout { background: #d97706; }
+        .auto-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; background: #121212; padding: 6px 12px; border-radius: 15px; }
+        
+        .live-section { background: #141518; margin-top: 10px; border-radius: 15px 15px 0 0; min-height: 200px; }
+        .live-header { display: flex; justify-content: space-around; padding: 10px; color: #888; font-size: 11px; border-bottom: 1px solid #222; }
+        .live-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; padding: 8px 15px; font-size: 12px; border-bottom: 1px solid #1a1a1a; align-items: center; }
+        .mult-val { background: var(--history-blue); color: #fff; border-radius: 10px; padding: 2px 6px; font-size: 10px; text-align: center; }
+        .win-val { color: var(--neon-green); font-weight: bold; text-align: right; }
+
+        .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--neon-green); }
+        input:checked + .slider:before { transform: translateX(16px); }
+        .auto-input { background: #1b1c1d; border: 1px solid #444; color: #fff; width: 50px; text-align: center; border-radius: 5px; font-size: 12px; }
+ 
+
+    </style>
+</head>
+<body>
+  
+  
+ 
+  
+  
+  
+  
+<div id="with-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; justify-content:center; align-items:center; font-family: sans-serif;">
+    <div style="background:#1a1d26; width:92%; max-width:380px; padding:25px; border-radius:20px; border:1px solid #333; color:white; position:relative;">
+        <span onclick="document.getElementById('with-modal').style.display='none'" style="position:absolute; right:20px; top:15px; font-size:28px; cursor:pointer; color:#666;">&times;</span>
+        <h3 style="text-align:center; color:#e1b12c; margin-bottom:20px;">Withdrawal Portal</h3>
+
+        <div id="section-bind" style="display:none;">
+            <p style="font-size:12px; color:#aaa; text-align:center;">Link your account to withdraw</p>
+            <input type="text" id="bn-name" placeholder="Full Name" style="width:100%; padding:12px; margin-bottom:10px; background:#000; border:1px solid #444; color:#fff; border-radius:8px; box-sizing: border-box;">
+            <input type="text" id="bn-ifsc" placeholder="Enter Bank IFSC Code" style="width:100%; padding:12px; margin-bottom:10px; background:#000; border:1px solid #444; color:#fff; border-radius:8px; box-sizing: border-box;">
+            <input type="text" id="bn-acc" placeholder="Account Number" style="width:100%; padding:12px; margin-bottom:10px; background:#000; border:1px solid #444; color:#fff; border-radius:8px; box-sizing: border-box;">
+            <input type="text" id="bn-upi" placeholder="UPI ID" style="width:100%; padding:12px; margin-bottom:15px; background:#000; border:1px solid #444; color:#fff; border-radius:8px; box-sizing: border-box;">
+            <button id="btn-save-bank" style="width:100%; background:#e1b12c; color:#000; padding:12px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">SAVE & CONTINUE</button>
+        </div>
+
+        <div id="section-with" style="display:none;">
+            <div style="background:#000; padding:15px; border-radius:12px; text-align:center; margin-bottom:20px; border:1px solid #222;">
+                <p style="font-size:12px; color:#888; margin:0;">Available Balance</p>
+                <h2 id="txt-balance" style="color:#4cd137; margin:5px 0;">₹0.00</h2>
+                <small id="bound-info" style="color:#555; font-size:11px;"></small>
+            </div>
+            <input type="number" id="inp-with-amount" placeholder="Min ₹300" style="width:100%; padding:15px; background:#000; border:1px solid #444; color:#fff; border-radius:10px; font-size:18px; text-align:center; box-sizing: border-box;">
+            <button id="btn-submit-final" style="width:100%; background:#c23616; color:#fff; padding:15px; border:none; border-radius:10px; font-weight:bold; margin-top:15px; cursor:pointer;">SUBMIT REQUEST</button>
+        </div>
+    </div>
+</div>
+
+
+  <div id="dep-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; justify-content:center; align-items:center;">
+    <div style="background:#1b1d21; width:90%; max-width:360px; padding:25px; border-radius:24px; text-align:center; color:white; border: 1px solid #333;">
+        <h3 style="color:#4cd137; margin-bottom:20px;">Deposit Cash</h3>
+        
+        <input type="number" id="dep-amount" value="500" style="width:100%; background:#000; border:2px solid #333; padding:15px; border-radius:12px; color:white; font-size:22px; text-align:center; margin-bottom:15px; outline:none;">
+
+        <div style="display:flex; gap:12px; margin-bottom:25px;">
+            <button onclick="pay('phonepe')" style="flex:1; background:#673ab7; border:none; padding:12px; border-radius:12px; color:white; font-weight:bold; cursor:pointer;">PhonePe</button>
+            <button onclick="pay('paytm')" style="flex:1; background:#00bcd4; border:none; padding:12px; border-radius:12px; color:white; font-weight:bold; cursor:pointer;">Paytm</button>
+        </div>
+
+        <p style="font-size:12px; color:#888;">after Payment enter 12-digit UTR No. :</p>
+        <input type="text" id="dep-utr" placeholder="Enter UTR Number" maxlength="12" style="width:100%; background:#000; border:2px solid #333; padding:15px; border-radius:12px; color:white; text-align:center; margin-bottom:15px;">
+
+        <button onclick="submitUTR()" style="width:100%; background:#2e7d32; border:none; padding:16px; border-radius:12px; color:white; font-weight:bold;">SUBMIT UTR</button>
+        <button onclick="document.getElementById('dep-modal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px; cursor:pointer;">CLOSE</button>
+    </div>
+</div>
+
+
+
+
+
+
+    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+<div class="sidebar" id="sidebar">
+    <div style="padding: 20px; text-align: center; border-bottom: 2px solid #333; margin-bottom: 10px;">
+        <span style="color: var(--neon-green); font-weight: bold;">AVIATOR MENU</span>
+    </div>
+    <div class="sidebar-item" onclick="toggleMenu(); handleWithdrawClick()">💸 Withdraw Cash</div>
+    <div class="sidebar-item" onclick="toggleMenu(); document.getElementById('dep-modal').style.display='flex'">💰 Deposit</div>
+    <div class="sidebar-item" onclick="toggleMenu(); alert('Bet history coming soon!')">📜 My Bet History</div>
+    <div class="sidebar-item" onclick="toggleMenu(); alert('Rules: Cashout before plane flies!')">ℹ️ Game Rules</div>
+</div>
+
+
+    <div class="header">
+        <div class="menu-btn" onclick="toggleMenu()">≡</div>
+        <div class="logo">AVIATOR</div>
+        <div class="nav-right">
+            <div class="wallet-box"><span class="wallet-val" id="wallet-val">₹5000.00</span></div>
+            <button class="deposit-btn" onclick="document.getElementById('dep-modal').style.display='flex'">Deposit</button>
+        </div>
+    </div>
+
+    <div class="history-strip" id="history-pills"></div>
+
+    <div class="game-canvas">
+        <div class="status-bar">
+            <div class="round-info">ROUND ID: #<span id="round-id">1</span></div>
+            <div class="ping-info"><div class="ping-dot"></div> <span id="ping-val">700</span>ms</div>
+        </div>
+
+        <div id="multiplier">1.00x</div>
+        
+        <div class="waiting-box" id="waiting-box">
+            <div class="waiting-text">Wait for next round</div>
+            <div class="progress-container">
+                <div class="progress-fill" id="prog-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bet-area">
+        <div class="bet-box">
+            <div class="bet-main">
+                <div style="flex:1">
+                    <div class="stepper"><button onclick="ch(0,-10)">-</button><span id="amt0">100.00</span><button onclick="ch(0,10)">+</button></div>
+                    <div style="display:flex; gap:5px; margin-top:8px">
+                        <button class="auto-input" style="width:25%" onclick="sv(0,10)">10</button>
+                        <button class="auto-input" style="width:25%" onclick="sv(0,100)">100</button>
+                        <button class="auto-input" style="width:25%" onclick="sv(0,500)">500</button>
+                        <button class="auto-input" style="width:25%" onclick="sv(0,1000)">1k</button>
+                    </div>
+                </div>
+                <button id="btn0" class="bet-btn" onclick="act(0)">BET</button>
+            </div>
+            <div class="auto-row">
+                <span style="font-size:10px; color:#888;">Auto Cash Out</span>
+                <label class="switch"><input type="checkbox" id="ac-en0"><span class="slider"></span></label>
+                <input type="number" id="ac-v0" value="2.00" class="auto-input">
+            </div>
+        </div>
+        <div class="bet-box">
+            <div class="bet-main">
+                <div style="flex:1">
+                    <div class="stepper"><button onclick="ch(1,-10)">-</button><span id="amt1">100.00</span><button onclick="ch(1,10)">+</button></div>
+                    <div style="display:flex; gap:5px; margin-top:8px">
+                        <button class="auto-input" style="width:25%" onclick="sv(1,10)">10</button>
+                        <button class="auto-input" style="width:25%" onclick="sv(1,100)">100</button>
+                        <button class="auto-input" style="width:25%" onclick="sv(1,500)">500</button>
+                        <button class="auto-input" style="width:25%" onclick="sv(1,1000)">1k</button>
+                    </div>
+                </div>
+                <button id="btn1" class="bet-btn" onclick="act(1)">BET</button>
+            </div>
+            <div class="auto-row">
+                <span style="font-size:10px; color:#888;">Auto Cash Out</span>
+                <label class="switch"><input type="checkbox" id="ac-en1"><span class="slider"></span></label>
+                <input type="number" id="ac-v1" value="2.00" class="auto-input">
+            </div>
+        </div>
+    </div>
+
+    <div class="live-section">
+        <div class="live-header"><span>User</span><span>Bet</span><span>X</span><span>Win</span></div>
+        <div id="live-list"></div>
+    </div>
+
+    <script>
+
+        function toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        setInterval(() => {
+            let ping = Math.floor(Math.random() * (750 - 650) + 650);
+            document.getElementById('ping-val').innerText = ping;
+        }, 2000);
+
+        let bets = [{amt:100, active:false, placed:false}, {amt:100, active:false, placed:false}];
+        let fly = false, cur = 1.00, loopStarted = false, roundId = 1;
+        const histDiv = document.getElementById('history-pills');
+        const liveList = document.getElementById('live-list');
+        const waitingBox = document.getElementById('waiting-box');
+        const progFill = document.getElementById('prog-fill');
+        const roundSpan = document.getElementById('round-id');
+
+        window.sv = (i,v) => { if(!fly){ bets[i].amt=v; document.getElementById('amt'+i).innerText=v.toFixed(2); }};
+        window.ch = (i,v) => { if(!fly){ bets[i].amt=Math.max(10, bets[i].amt+v); document.getElementById('amt'+i).innerText=bets[i].amt.toFixed(2); }};
+
+
+
+window.act = (i) => {  
+    if(!fly) {
+        // 1. Aapke HTML se balance uthane ka sahi rasta
+        let balElement = document.getElementById('wallet-val'); 
+        let currentBalance = parseFloat(balElement.innerText.replace('₹', ''));
+        let betAmt = bets[i].amt; 
+
+        // 2. Betting Logic with Balance Check
+        if(!bets[i].placed) {
+            // Check: Kya paise hain?
+            if(isNaN(currentBalance) || currentBalance < betAmt) {
+                alert("Insufficient Balance.");
+                return; 
+            }
+            // Bet lag gayi, toh balance minus karo
+            currentBalance -= betAmt;
+        } else {
+            // Cancel kiya toh balance wapas jodo
+            currentBalance += betAmt;
+        }
+
+        // 3. Screen par turant naya balance dikhao
+        balElement.innerText = "₹" + currentBalance.toFixed(2);
+        
+        // Global variable update (taaki database sync rahe)
+        userBalance = currentBalance;
+
+        // 4. Button toggle logic
+        bets[i].placed = !bets[i].placed;  
+        document.getElementById('btn'+i).style.background = bets[i].placed ? "#b91c1c" : "#28a745";  
+        document.getElementById('btn'+i).innerText = bets[i].placed ? "CANCEL" : "BET";  
+        
+        if(!loopStarted) startRound();
+    } else if(bets[i].active && fly) {
+        cashOut(i);
+    }  
+};
+
+
+
+
+
+        async function cashOut(i) {
+            if(!bets[i].active || !fly) return;
+            let winAmt = bets[i].amt * cur;
+            bets[i].active = false; bets[i].placed = false;
+            document.getElementById('btn'+i).style.background = "#28a745";
+            document.getElementById('btn'+i).innerText = "BET";
+            addLiveRow("You", bets[i].amt, cur, winAmt.toFixed(2));
+            await window.dbUpdate(window.userRef, { balance: window.dbIncr(winAmt) });
+        }
+
+        function addLiveRow(user, bet, mult, win) {
+            let row = document.createElement('div');
+            row.className = 'live-row';
+            row.innerHTML = `<span>${user}</span><span>₹${bet}</span><span class="mult-val">${parseFloat(mult).toFixed(2)}x</span><span class="win-val">₹${win}</span>`;
+            liveList.prepend(row);
+            if(liveList.children.length > 15) liveList.lastChild.remove();
+        }
+
+        function startRound() {
+            loopStarted = true; fly = false;
+            roundSpan.innerText = roundId;
+            liveList.innerHTML = ""; 
+            
+            document.getElementById('multiplier').innerText = "WAITING...";
+            document.getElementById('multiplier').style.color = "#fff";
+            waitingBox.style.display = "flex";
+            progFill.style.width = "0%";
+            
+            setTimeout(() => { progFill.style.width = "100%"; }, 50);
+
+            setTimeout(() => {
+                waitingBox.style.display = "none";
+                fly = true; cur = 1.00;
+                let crash = (1.05 + Math.random() * 4.5).toFixed(2);
+                let st = Date.now();
+                
+                bets.forEach((b,i) => { if(b.placed){ b.active=true; window.dbUpdate(window.userRef,{balance:window.dbIncr(-b.amt)}); document.getElementById('btn'+i).className='bet-btn cashout'; }});
+
+                let iv = setInterval(() => {
+                    if(!fly) { clearInterval(iv); return; }
+                    let elapsed = (Date.now() - st) / 1000;
+                    cur = 1.00 + (Math.pow(elapsed, 1.2) * 0.15);
+                    
+                    if(cur >= crash) {
+                        fly = false; clearInterval(iv);
+                        document.getElementById('multiplier').innerText = "FLEW AWAY!";
+                        document.getElementById('multiplier').style.color = "#e11d48";
+                        bets.forEach((b,i)=>{ if(b.active){ b.active=false; b.placed=false; let btn=document.getElementById('btn'+i); btn.style.background="#28a745"; btn.innerText="BET"; }});
+                        let pill = document.createElement('div'); pill.className = 'history-pill';
+                        pill.innerText = parseFloat(crash).toFixed(2) + "x";
+                        pill.style.color = parseFloat(crash) < 2 ? "#34bfff" : "#913dfb";
+                        histDiv.prepend(pill);
+                        roundId++;
+                        setTimeout(startRound, 3000);
+                        return;
+                    }
+
+                    document.getElementById('multiplier').innerText = cur.toFixed(2) + "x";
+
+                    if(Math.random() > 0.85) { 
+                        let fBet = Math.floor(Math.random() * 900) + 10;
+                        let fUser = "User_" + Math.floor(Math.random() * 999);
+                        let fX = (1.01 + Math.random() * (cur - 0.01)).toFixed(2);
+                        addLiveRow(fUser, fBet, fX, (fBet * fX).toFixed(2));
+                    }
+
+                    bets.forEach((b,i) => { 
+                        if(b.active) {
+                            let isAuto = document.getElementById('ac-en'+i).checked;
+                            if(isAuto && cur >= parseFloat(document.getElementById('ac-v'+i).value)) cashOut(i);
+                            else document.getElementById('btn'+i).innerHTML = `CASHOUT<br>₹${(b.amt*cur).toFixed(2)}`; 
+                        }
+                    });
+                }, 100);
+            }, 3000);
+        }
+        startRound();
+    </script>
+</body>
+</html>
+
+
