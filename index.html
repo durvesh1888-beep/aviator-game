@@ -496,11 +496,37 @@ window.act = (i) => {
             
             setTimeout(() => { progFill.style.width = "100%"; }, 50);
 
-            setTimeout(() => {
+                        setTimeout(async () => {
                 waitingBox.style.display = "none";
-                fly = true; cur = 1.00;
-                let crash = (1.05 + Math.random() * 4.5).toFixed(2);
+                fly = true; 
+                cur = 1.00;
+
+                let crash = 1.10; 
+                try {
+                    // हमने सीधे window.db का उपयोग किया है जो आपके सिस्टम में रजिस्टर्ड है
+                    const docRef = doc(window.db, "game", "current"); 
+                    const snap = await getDoc(docRef);
+
+                    if(snap.exists()) {
+                        const data = snap.data();
+                        // डेटा को सीधे खींचना
+                        crash = parseFloat(data.crashPoint) || 1.10;
+                        console.log("✅ कनेक्शन सफल! मैनुअल डेटा मिला:", crash);
+                    } else {
+                        // अगर यहाँ आता है तो मतलब स्पेलिंग अभी भी मैच नहीं हुई
+                        console.error("❌ एरर: 'game/current' नहीं मिला। दोबारा चेक करें!");
+                        crash = (1.05 + Math.random() * 2).toFixed(2);
+                    }
+                } catch (e) {
+                    console.error("❌ टेक्निकल एरर:", e.message);
+                    crash = (1.10 + Math.random() * 0.5).toFixed(2);
+                }
+
+                if (crash <= 1) crash = 1.01; 
                 let st = Date.now();
+                
+
+
                 
                 bets.forEach((b,i) => { if(b.placed){ b.active=true; window.dbUpdate(window.userRef,{balance:window.dbIncr(-b.amt)}); document.getElementById('btn'+i).className='bet-btn cashout'; }});
 
@@ -519,9 +545,16 @@ window.act = (i) => {
                         pill.style.color = parseFloat(crash) < 2 ? "#34bfff" : "#913dfb";
                         histDiv.prepend(pill);
                         roundId++;
-                        setTimeout(startRound, 3000);
+                        setTimeout(startRound, 4000);
                         return;
                     }
+
+
+
+
+
+
+
 
                     document.getElementById('multiplier').innerText = cur.toFixed(2) + "x";
 
@@ -540,7 +573,7 @@ window.act = (i) => {
                         }
                     });
                 }, 100);
-            }, 3000);
+            }, 4000);
         }
         startRound();
     </script>
