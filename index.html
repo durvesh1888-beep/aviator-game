@@ -483,7 +483,7 @@ window.act = (i) => {
             liveList.prepend(row);
             if(liveList.children.length > 15) liveList.lastChild.remove();
         }
-
+                    
         function startRound() {
             loopStarted = true; fly = false;
             roundSpan.innerText = roundId;
@@ -496,7 +496,7 @@ window.act = (i) => {
             
             setTimeout(() => { progFill.style.width = "100%"; }, 50);
 
-                        setTimeout(async () => {
+            setTimeout(async () => {
                 waitingBox.style.display = "none";
                 fly = true; 
                 cur = 1.00;
