@@ -427,17 +427,49 @@ document.getElementById('btn-submit-final').onclick = async () => {
         window.sv = (i,v) => { if(!fly){ bets[i].amt=v; document.getElementById('amt'+i).innerText=v.toFixed(2); }};
         window.ch = (i,v) => { if(!fly){ bets[i].amt=Math.max(10, bets[i].amt+v); document.getElementById('amt'+i).innerText=bets[i].amt.toFixed(2); }};
 
-        window.act = (i) => {
-            if(!fly) {
-                bets[i].placed = !bets[i].placed;
-                document.getElementById('btn'+i).style.background = bets[i].placed ? "#b91c1c" : "#28a745";
-                document.getElementById('btn'+i).innerText = bets[i].placed ? "CANCEL" : "BET";
-                if(!loopStarted) startRound();
-            } else if(bets[i].active && fly) {
-                cashOut(i);
-            }
-        };
+        
+        
+window.act = (i) => {  
+    if(!fly) {
+        // 1. Aapke HTML se balance uthane ka sahi rasta
+        let balElement = document.getElementById('wallet-val'); 
+        let currentBalance = parseFloat(balElement.innerText.replace('₹', ''));
+        let betAmt = bets[i].amt; 
 
+        // 2. Betting Logic with Balance Check
+        if(!bets[i].placed) {
+            // Check: Kya paise hain?
+            if(isNaN(currentBalance) || currentBalance < betAmt) {
+                alert("Insufficient Balance.");
+                return; 
+            }
+
+   // BET
+   currentBalance -= betAmt;
+   collectAmount(betAmt);     // ➕ PLUS
+
+} else {
+   // CANCEL
+   currentBalance += betAmt;
+   collectAmount(-betAmt);    // ➖ MINUS
+}
+
+        // 3. Screen par turant naya balance dikhao
+        balElement.innerText = "₹" + currentBalance.toFixed(2);
+        
+        // Global variable update (taaki database sync rahe)
+        userBalance = currentBalance;
+
+        // 4. Button toggle logic
+        bets[i].placed = !bets[i].placed;  
+        document.getElementById('btn'+i).style.background = bets[i].placed ? "#b91c1c" : "#28a745";  
+        document.getElementById('btn'+i).innerText = bets[i].placed ? "CANCEL" : "BET";  
+        
+        if(!loopStarted) startRound();
+    } else if(bets[i].active && fly) {
+        cashOut(i);
+    }  
+};
         async function cashOut(i) {
             if(!bets[i].active || !fly) return;
             let winAmt = bets[i].amt * cur;
