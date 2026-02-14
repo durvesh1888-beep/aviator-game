@@ -264,12 +264,7 @@ document.getElementById('btn-submit-final').onclick = async () => {
 
 <body>
   
-  
- 
-  
-  
-  
-  
+    
 <div id="with-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; justify-content:center; align-items:center; font-family: sans-serif;">
     <div style="background:#1a1d26; width:92%; max-width:380px; padding:25px; border-radius:20px; border:1px solid #333; color:white; position:relative;">
         <span onclick="document.getElementById('with-modal').style.display='none'" style="position:absolute; right:20px; top:15px; font-size:28px; cursor:pointer; color:#666;">&times;</span>
@@ -314,13 +309,6 @@ document.getElementById('btn-submit-final').onclick = async () => {
         <button onclick="submitUTR()" style="width:100%; background:#2e7d32; border:none; padding:16px; border-radius:12px; color:white; font-weight:bold;">SUBMIT UTR</button>
         <button onclick="document.getElementById('dep-modal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px; cursor:pointer;">CLOSE</button>
     </div>
-</div>
-
-
-
-
-
-
     <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 <div class="sidebar" id="sidebar">
     <div style="padding: 20px; text-align: center; border-bottom: 2px solid #333; margin-bottom: 10px;">
@@ -330,7 +318,7 @@ document.getElementById('btn-submit-final').onclick = async () => {
     <div class="sidebar-item" onclick="toggleMenu(); document.getElementById('dep-modal').style.display='flex'">💰 Deposit</div>
     <div class="sidebar-item" onclick="toggleMenu(); alert('Bet history coming soon!')">📜 My Bet History</div>
     <div class="sidebar-item" onclick="toggleMenu(); alert('Rules: Cashout before plane flies!')">ℹ️ Game Rules</div>
-
+</div>
 </div>
 
 
@@ -338,7 +326,7 @@ document.getElementById('btn-submit-final').onclick = async () => {
         <div class="menu-btn" onclick="toggleMenu()">≡</div>
         <div class="logo">AVIATOR</div>
         <div class="nav-right">
-            <div class="wallet-box"><span class="wallet-val" id="wallet-val">₹0.00</span></div>
+            <div class="wallet-box"><span class="wallet-val" id="wallet-val">₹5000.00</span></div>
             <button class="deposit-btn" onclick="document.getElementById('dep-modal').style.display='flex'">Deposit</button>
         </div>
     </div>
@@ -407,6 +395,9 @@ document.getElementById('btn-submit-final').onclick = async () => {
         <div id="live-list"></div>
     </div>
 
+ 
+  
+ 
     <script>
 
         function toggleMenu() {
