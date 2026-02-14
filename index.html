@@ -330,7 +330,7 @@ document.getElementById('btn-submit-final').onclick = async () => {
         <div class="menu-btn" onclick="toggleMenu()">≡</div>
         <div class="logo">AVIATOR</div>
         <div class="nav-right">
-            <div class="wallet-box"><span class="wallet-val" id="wallet-val">₹00.00</span></div>
+            <div class="wallet-box"><span class="wallet-val" id="wallet-val">₹5000.00</span></div>
             <button class="deposit-btn" onclick="document.getElementById('dep-modal').style.display='flex'">Deposit</button>
         </div>
     </div>
@@ -422,49 +422,16 @@ document.getElementById('btn-submit-final').onclick = async () => {
         window.sv = (i,v) => { if(!fly){ bets[i].amt=v; document.getElementById('amt'+i).innerText=v.toFixed(2); }};
         window.ch = (i,v) => { if(!fly){ bets[i].amt=Math.max(10, bets[i].amt+v); document.getElementById('amt'+i).innerText=bets[i].amt.toFixed(2); }};
 
-
-
-window.act = (i) => {  
-    if(!fly) {
-        // 1. Aapke HTML se balance uthane ka sahi rasta
-        let balElement = document.getElementById('wallet-val'); 
-        let currentBalance = parseFloat(balElement.innerText.replace('₹', ''));
-        let betAmt = bets[i].amt; 
-
-        // 2. Betting Logic with Balance Check
-        if(!bets[i].placed) {
-            // Check: Kya paise hain?
-            if(isNaN(currentBalance) || currentBalance < betAmt) {
-                alert("Insufficient Balance.");
-                return; 
+        window.act = (i) => {
+            if(!fly) {
+                bets[i].placed = !bets[i].placed;
+                document.getElementById('btn'+i).style.background = bets[i].placed ? "#b91c1c" : "#28a745";
+                document.getElementById('btn'+i).innerText = bets[i].placed ? "CANCEL" : "BET";
+                if(!loopStarted) startRound();
+            } else if(bets[i].active && fly) {
+                cashOut(i);
             }
-            // Bet lag gayi, toh balance minus karo
-            currentBalance -= betAmt;
-        } else {
-            // Cancel kiya toh balance wapas jodo
-            currentBalance += betAmt;
-        }
-
-        // 3. Screen par turant naya balance dikhao
-        balElement.innerText = "₹" + currentBalance.toFixed(2);
-        
-        // Global variable update (taaki database sync rahe)
-        userBalance = currentBalance;
-
-        // 4. Button toggle logic
-        bets[i].placed = !bets[i].placed;  
-        document.getElementById('btn'+i).style.background = bets[i].placed ? "#b91c1c" : "#28a745";  
-        document.getElementById('btn'+i).innerText = bets[i].placed ? "CANCEL" : "BET";  
-        
-        if(!loopStarted) startRound();
-    } else if(bets[i].active && fly) {
-        cashOut(i);
-    }  
-};
-
-
-
-
+        };
 
         async function cashOut(i) {
             if(!bets[i].active || !fly) return;
@@ -483,7 +450,7 @@ window.act = (i) => {
             liveList.prepend(row);
             if(liveList.children.length > 15) liveList.lastChild.remove();
         }
-                    
+
         function startRound() {
             loopStarted = true; fly = false;
             roundSpan.innerText = roundId;
@@ -496,37 +463,11 @@ window.act = (i) => {
             
             setTimeout(() => { progFill.style.width = "100%"; }, 50);
 
-            setTimeout(async () => {
+            setTimeout(() => {
                 waitingBox.style.display = "none";
-                fly = true; 
-                cur = 1.00;
-
-                let crash = 1.10; 
-                try {
-                    // हमने सीधे window.db का उपयोग किया है जो आपके सिस्टम में रजिस्टर्ड है
-                    const docRef = doc(window.db, "game", "current"); 
-                    const snap = await getDoc(docRef);
-
-                    if(snap.exists()) {
-                        const data = snap.data();
-                        // डेटा को सीधे खींचना
-                        crash = parseFloat(data.crashPoint) || 1.10;
-                        console.log("✅ कनेक्शन सफल! मैनुअल डेटा मिला:", crash);
-                    } else {
-                        // अगर यहाँ आता है तो मतलब स्पेलिंग अभी भी मैच नहीं हुई
-                        console.error("❌ एरर: 'game/current' नहीं मिला। दोबारा चेक करें!");
-                        crash = (1.05 + Math.random() * 2).toFixed(2);
-                    }
-                } catch (e) {
-                    console.error("❌ टेक्निकल एरर:", e.message);
-                    crash = (1.10 + Math.random() * 0.5).toFixed(2);
-                }
-
-                if (crash <= 1) crash = 1.01; 
+                fly = true; cur = 1.00;
+                let crash = (1.05 + Math.random() * 4.5).toFixed(2);
                 let st = Date.now();
-                
-
-
                 
                 bets.forEach((b,i) => { if(b.placed){ b.active=true; window.dbUpdate(window.userRef,{balance:window.dbIncr(-b.amt)}); document.getElementById('btn'+i).className='bet-btn cashout'; }});
 
@@ -545,16 +486,9 @@ window.act = (i) => {
                         pill.style.color = parseFloat(crash) < 2 ? "#34bfff" : "#913dfb";
                         histDiv.prepend(pill);
                         roundId++;
-                        setTimeout(startRound, 4000);
+                        setTimeout(startRound, 3000);
                         return;
                     }
-
-
-
-
-
-
-
 
                     document.getElementById('multiplier').innerText = cur.toFixed(2) + "x";
 
@@ -573,11 +507,11 @@ window.act = (i) => {
                         }
                     });
                 }, 100);
-            }, 4000);
+            }, 3000);
         }
         startRound();
     </script>
 </body>
 </html>
 
-
+    
