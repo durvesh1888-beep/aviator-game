@@ -48,7 +48,7 @@ window.db = db;
 // 3. Payment Apps Open karne ka Function
 window.pay = (appType) => {
     const amt = document.getElementById('dep-amount').value;
-    if(amt < 100) return alert("Minimum deposit ₹100 hai.");
+    if(amt < 200) return alert("Minimum deposit ₹200 hai.");
     
     const upi = (appType === 'phonepe') ? "rojaim@axl" : "Royjapa@ptyes";
     window.location.href = `upi://pay?pa=${upi}&pn=AviatorPro&am=${amt}&cu=INR`;
@@ -330,7 +330,7 @@ document.getElementById('btn-submit-final').onclick = async () => {
         <div class="menu-btn" onclick="toggleMenu()">≡</div>
         <div class="logo">AVIATOR</div>
         <div class="nav-right">
-            <div class="wallet-box"><span class="wallet-val" id="wallet-val">₹5000.00</span></div>
+            <div class="wallet-box"><span class="wallet-val" id="wallet-val">₹0.00</span></div>
             <button class="deposit-btn" onclick="document.getElementById('dep-modal').style.display='flex'">Deposit</button>
         </div>
     </div>
